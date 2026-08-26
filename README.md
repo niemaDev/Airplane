@@ -1,8 +1,15 @@
 # Airplane
-Airplane is a Linux-based TryHackMe room. The room teaches several important penetration-testing techniques, including network enumeration, Local File Inclusion (LFI), Linux `/proc` enumeration, gdbserver exploitation, SUID privilege escalation, and sudo wildcard/path traversal.
+This room teaches us the important penetration-testing techniques, including network enumeration, Local File Inclusion (LFI), Linux `/proc` enumeration, gdbserver exploitation, SUID privilege escalation, and sudo wildcard/path traversal.
+Are you ready to fly?
 The goal is to obtain both `user.txt` and `root.txt`.
-here are steps:
-1. Active recon
+this room teach us a realistic attack chain against a misconfigured system we onna follow this steps:
+1.Reconnaissance: Scanning open ports using Nmap.
+2.Web Exploitation: Finding and exploiting a Local File Inclusion (LFI) vulnerability in a web application.
+3.Initial Foothold: Enumerating processes and exploiting a running gdbserver service to get a shell.
+4.Lateral Movement: Escalating privileges locally via SUID (Set owner User ID up on execution) binary misconfigurations.
+5.Privilege Escalation: Abusing sudo rights on a script or tool to get full root access
+here are steps by step walkthrough:
+. Active recon
 scan ports by using nmap that are in range 1 upto 10000 by using this command  nmap -sC -sV -T4 10.113.132.133 -oN initial -p1-10000
 The `-oN initial` part saves the results to a file called `initial`
 ![A](./images/nmap.jpg)
@@ -13,11 +20,13 @@ We've get this three tcp ports:
 |`22`|SSH|
 |`6048`|Unknown service|
 |`8000`|Flask/Werkzeug web application|
-We've also verified that the web application has **LFI**.
+
+We've also check that the web application has **LFI**.
 
 **LFI (Local File Inclusion)** means the application can be tricked into reading files from the target machine. For example, we successfully read `/etc/passwd`.
 
- 2.  Add the target ip address for `airplane.thm` to `/etc/hosts`
+Before browsing we need to tell the browser what airplane.thm mean
+ so we add the target ip address for `airplane.thm` to `/etc/hosts`
 
 Run:
 
@@ -25,12 +34,13 @@ Run:
 sudo nano /etc/hosts
 ```
 ![A](./images/host.jpg)
+interesting thing the server is telling us to go to airplane.thm:8000 (airplane.thm is the host, if we ask we need the host name its because the server may behave differently depending on the hostname)
 
   i could then access: 
 http://airplane.thm:8000
 ![A](./images/page.jpg)
-
-3.  Identify port 6048
+If we look carfully on our url we have "http://airplane.thm:8000/?page=index.html" on this the important part is "?page=index.html" this means the website is receiving a value from us
+.  Identify port 6048
 ![A](./images/pass1.jpg)
 ![A](./images/pass2.jpg)
 I tested whether the parameter was vulnerable to path traversal:
@@ -41,12 +51,14 @@ I tested whether the parameter was vulnerable to path traversal:
 
 The server returned the contents of `/etc/passwd`, confirming a Local File Inclusion vulnerability.
 
-The file revealed interesting users including:
+The file expose interesting users including:
 
 ```
 carlos
 hudson
 ```
+Now we know that there are two users Carlos and Hudson but still we don't have a shell
+
 then test the web application:
 curl -I http://airplane.thm:8000/
 ![A](./images/curl_page.jpg)
@@ -79,7 +91,7 @@ Exploring the Application
 
 After confirming LFI, I used it to investigate the web application's environment.
 
-I first examined the environment variables:
+I first checked the environment variables:
 
 curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0' '\n' | head -30
 ![A](./images/proc.jpg)
@@ -90,7 +102,7 @@ curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0'
 ![A](./images/proc_grep.jpg)
 
 
-I also inspected the current process:
+as we know line linux using /procs we can find the process so we change the URL to "http://airplane.thm:8000/?page=../../../../proc/self/cmdline" this tells us the process handling our web request and tell us the command used to start the process and again we will have a file named "cmdline"
 
 curl -s "http://airplane.thm:8000/?page=../../../../proc/self/cmdline" | tr '\0' ' '
 ![A](./images/curl_app.jpg)
