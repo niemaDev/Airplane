@@ -86,16 +86,14 @@ this means the website is receiving a value from us.
 
 # 3. Identify Port 6048
 
-![Pass 1](./images/pass1.jpg)
-
-![Pass 2](./images/pass2.jpg)
-
+![Port 6048 Access](./images/p6048access.jpg)
+![Sudo Nmap](./images/sudo_nmap.jpg)
 I tested whether the parameter was vulnerable to path traversal:
 
 ```text
 ?page=../../../../etc/passwd
 ```
-
+![Grep Bin](./images/grep_bin.jpg)
 The server returned the contents of `/etc/passwd`, confirming a Local File Inclusion vulnerability.
 
 The file expose interesting users including:
@@ -329,7 +327,7 @@ I then examined the process status:
 ```bash
 curl -s "http://airplane.thm:8000/?page=../../../../../proc/534/status" | grep -E '^(Name|Pid|Uid|Gid):'
 ```
-
+![Proc Status](./images/proc_status.jpg)
 The process information showed that the process was associated with the service listening on port 6048.
 
 ---
@@ -556,18 +554,20 @@ The shell gave me access as:
 ```text
 hudson
 ```
+![Home Hudson](./images/home_hudson.jpg)
 
+![Hudson Cat](./images/hudson_cat.jpg)
+
+![Hudson Exec](./images/hudson_exec.jpg)
+![Systemctl](./images/systemctl.jpg)
 ![Initial Shell](./images/1001.jpg)
+![Stty](./images/stty.jpg)
 
 ---
 
 # 18. Lateral Movement
 
 Then the target downloads the binary.elf.
-
-![Bash](./images/bash.jpg)
-
-![Bash 5](./images/bash5.jpg)
 
 ![Binary](./images/binary.jpg)
 
@@ -583,7 +583,7 @@ cat /home/carlos/user.txt
 
 ![Carlos 2](./images/carlos2.jpg)
 
-![Curl D](./images/curl_d.jpg)
+![SSH Carlos](./images/ssh_carlos.jpg)
 
 ![Curl Head](./images/curl_head.jpg)
 
@@ -591,7 +591,6 @@ cat /home/carlos/user.txt
 
 ![ELF](./images/elf.jpg)
 
-![Carlos Flag](./images/flag_carlos.jpg)
 
 **WE FOUND THE USER FLAG**
 
@@ -636,29 +635,6 @@ So now two files were created:
 
 The private key or the first one proves that we are allowed to log in and the public or the second one is placed in the users authorized_keys file.
 
-![Gobuster](./images/gobuster.jpg)
-
-![Grep Bin](./images/grep_bin.jpg)
-
-![Home Hudson](./images/home_hudson.jpg)
-
-![Hudson Cat](./images/hudson_cat.jpg)
-
-![Hudson Exec](./images/hudson_exec.jpg)
-
-![Port 6048 Access](./images/p6048access.jpg)
-
-![Proc Status](./images/proc_status.jpg)
-
-![Show Architecture](./images/show_arch.jpg)
-
-![SSH Carlos](./images/ssh_carlos.jpg)
-
-![Stty](./images/stty.jpg)
-
-![Sudo Nmap](./images/sudo_nmap.jpg)
-
-![Systemctl](./images/systemctl.jpg)
 
 ---
 
@@ -671,6 +647,8 @@ The private key or the first one proves that we are allowed to log in and the pu
 ```text
 user.txt
 ```
+![Bash 5](./images/bash5.jpg)
+![Bash](./images/bash.jpg)
 
 ## Root Flag
 
@@ -679,6 +657,8 @@ Next we need to have a root privileged to find the root flag.
 ```text
 root.txt
 ```
+
+![Carlos Flag](./images/flag_carlos.jpg)
 
 ---
 
