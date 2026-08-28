@@ -6,15 +6,7 @@ Are you ready to fly?
 
 The goal is to obtain both `user.txt` and `root.txt`.
 
-This room teach us a realistic attack chain against a misconfigured system we gonna follow this steps:
-
-1. Reconnaissance: Scanning open ports using Nmap.
-2. Web Exploitation: Finding and exploiting a Local File Inclusion (LFI) vulnerability in a web application.
-3. Initial Foothold: Enumerating processes and exploiting a running gdbserver service to get a shell.
-4. Lateral Movement: Escalating privileges locally via SUID (Set owner User ID up on execution) binary misconfigurations.
-5. Privilege Escalation: Abusing sudo rights on a script or tool to get full root access.
-
-Here are steps by step walkthrough:
+we gonna use this steps :
 
 ---
 
@@ -30,7 +22,7 @@ The `-oN initial` part saves the results to a file called `initial`.
 
 ![Nmap Scan](./images/nmap.jpg)
 
-We've get this three tcp ports:
+ get this three tcp ports:
 
 | Port   | Service                        |
 | ------ | ------------------------------ |
@@ -38,7 +30,7 @@ We've get this three tcp ports:
 | `6048` | Unknown service                |
 | `8000` |  web application |
 
-We've also check that the web application has **LFI**.
+ check that the web application has **LFI**.
 
 **LFI (Local File Inclusion)** means the application can be tricked into reading files from the target machine. For example, we successfully read `/etc/passwd`.
 
@@ -46,7 +38,7 @@ We've also check that the web application has **LFI**.
 
 # 2. Configure `/etc/hosts`
 
-Before browsing we need to tell the browser what airplane.thm mean.
+Before browsing we have to tell the browser what airplane.thm mean.
 
 So we add the target ip address for `airplane.thm` to `/etc/hosts`.
 
@@ -68,7 +60,7 @@ http://airplane.thm:8000
 
 ![Airplane Web Page](./images/page.jpg)
 
-If we look carfully on our url we have:
+ look carfully on our url we have:
 
 ```text
 http://airplane.thm:8000/?page=index.html
@@ -103,7 +95,7 @@ carlos
 hudson
 ```
 
-Now we know that there are two users Carlos and Hudson but still we don't have a shell.
+here there are two users Carlos and Hudson but still we don't have a shell.
 
 ---
 
@@ -151,7 +143,7 @@ curl -s "http://airplane.thm:8000/?page=../../../../etc/passwd" | grep -E '/bin/
 
 The server returned the contents of `/etc/passwd`.
 
-This confirmed a Local File Inclusion (LFI) vulnerability.
+This confirmed that it is  a Local File Inclusion (LFI) vulnerability.
 
 ---
 
@@ -159,7 +151,7 @@ This confirmed a Local File Inclusion (LFI) vulnerability.
 
 After confirming LFI, I used it to investigate the web application's environment.
 
-I first checked the environment variables:
+first checked the environment variables:
 
 ```bash
 curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0' '\n' | head -30
@@ -167,7 +159,7 @@ curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0'
 
 ![Proc Environment](./images/proc.jpg)
 
-I then filtered useful variables:
+filter useful variables:
 
 ```bash
 curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0' '\n' | grep -E '^(PWD|HOME|USER|PATH)='
@@ -189,13 +181,13 @@ curl -s "http://airplane.thm:8000/?page=../../../../proc/self/cmdline" | tr '\0'
 
 ![Curl Application](./images/curl_app.jpg)
 
-This helped establish that the web application was running as a process on the target machine.
+This helped to create a web application running as a process on the target machine.
 
 ---
 
 # 7. Inspecting Application Files
 
-Because the LFI allowed arbitrary local files to be read, I investigated files related to the web application.
+cause the LFI allowed arbitrary local files to be read, I investigate files related to web application.
 
 I checked the application source:
 
@@ -221,7 +213,7 @@ curl -s "http://airplane.thm:8000/?page=../../../../home/hudson/app/templates/ai
 
 ![Curl Template](./images/curl_temp.jpg)
 
-I also investigated:
+I also checked:
 
 ```text
 /home/hudson/.ssh/id_rsa
@@ -240,7 +232,7 @@ These help me understand the target's filesystem and application structure.
 
 ---
 
-# 8. Investigating Port 6048
+# 8. check Port 6048
 
  Nmap scan identified:
 
@@ -258,7 +250,7 @@ sudo nmap -sC -sV -p6048 MACHINE_IP
 
 ![Port 6048 Scan](./images/p6048.jpg)
 
-I also tested:
+ test
 
 ```bash
 sudo nmap -p6048 --script x11-access MACHINE_IP
@@ -280,7 +272,7 @@ nc -nv MACHINE_IP 6048
 
 The service was still not immediately clear.
 
-Because we already had LFI, I used the vulnerability to investigate the Linux process information.
+Because i had LFI, i use the vulnerability to investigate the Linux process information.
 
 ---
 
@@ -320,7 +312,7 @@ done
 
 It iterates through Process IDs (PIDs) 1 to 1000, leveraging the web application's LFI vulnerability to read `/proc/[PID]/cmdline`. By filtering the output for '6048', it identifies the exact PID and command running the service on port 6048—revealing that gdbserver is the underlying binary.
 
-This tells us that port 6048 was being used by gdbserver this means we could connect to the airplane process remotely (gdbserver : is a program that allows a debugger such as GDB to connect to another machine and control a program remotely).
+This tells us that port 6048 was being used by gdbserver this means i have to connect to the airplane process remotely (gdbserver : is a program that allows a debugger such as GDB to connect to another machine and control a program remotely).
 
 I then examined the process status:
 
@@ -362,8 +354,6 @@ Converting:
 0x17A0 = 6048
 ```
 
-This confirmed that the process information we checked corresponded to the unknown service on TCP port 6048.
-
 ---
 
 # 11. Identifying gdbserver
@@ -404,7 +394,7 @@ running on:
 6048
 ```
 
-This was the key to obtaining initial access.
+it is a key to obtain initial access.
 
 ---
 
@@ -515,7 +505,7 @@ The target architecture was checked during the process.
 
 # 16. Executing the Payload
 
-After establishing the remote GDB connection, I uploaded/configured the payload and executed it through the remote debugging session.
+After creatin remote GDB connection, i configured the payload and executed it through the remote debugging session.
 
 The payload was an ELF reverse-shell executable:
 
@@ -651,44 +641,6 @@ root.txt
 ![Carlos Flag](./images/flag_carlos.jpg)
 
 ---
-
-## Summary
-
-```text
-Nmap
-  
-Port 8000 discovered
-  
-?page=index.html
-  
-LFI discovered
-  
-/etc/passwd
-  
-/proc enumeration
-  
-Port 6048 identified
-  
-gdbserver identified
-  
-GDB connection
-  
-Reverse-shell payload
-  
-hudson shell
-  
-Lateral movement
-  
-carlos
-  
-user.txt
-  
-SUID / Privilege Escalation
-  
-root
-  
-root.txt
-```
 
 # Conclusion
 
