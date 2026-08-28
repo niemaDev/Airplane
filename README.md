@@ -10,7 +10,7 @@ we gonna use this steps :
 
 ---
 
-# 1. Active Recon
+## 1. Active Recon
 
 scan ports by using nmap that are in range 1 upto 10000 by using this command:
 
@@ -36,7 +36,7 @@ The `-oN initial` part saves the results to a file called `initial`.
 
 ---
 
-# 2. Configure `/etc/hosts`
+## 2. set up `/etc/hosts`
 
 Before browsing we have to tell the browser what airplane.thm mean.
 
@@ -76,7 +76,7 @@ this means the website is receiving a value from us.
 
 ---
 
-# 3. Identify Port 6048
+## 3. investigate Port 6048
 
 ![Port 6048 Access](./images/p6048access.jpg)
 ![Sudo Nmap](./images/sudo_nmap.jpg)
@@ -99,7 +99,7 @@ here there are two users Carlos and Hudson but still we don't have a shell.
 
 ---
 
-# 4. Test the Web Application
+## 4. Test web app by using curl command
 
 then test the web application:
 
@@ -120,8 +120,6 @@ curl -s "http://airplane.thm:8000/?page=index.html" | head -40
 ![Curl Main Page](./images/curl_s.jpg)
 
 ---
-
-# 5. Web Application Enumeration
 
 The application used a parameter called:
 
@@ -147,11 +145,9 @@ This confirmed that it is  a Local File Inclusion (LFI) vulnerability.
 
 ---
 
-# 6. Exploring the Application
+## 5. Exploring the Application
 
-After confirming LFI, I used it to investigate the web application's environment.
-
-first checked the environment variables:
+After confirming LFI, first checked the environment variables:
 
 ```bash
 curl -s "http://airplane.thm:8000/?page=../../../../proc/self/environ" | tr '\0' '\n' | head -30
@@ -185,9 +181,9 @@ This helped to create a web application running as a process on the target machi
 
 ---
 
-# 7. Inspecting Application Files
+## 6. Inspect the application files
 
-cause the LFI allowed arbitrary local files to be read, I investigate files related to web application.
+the LFI allowed arbitrary local files to be read, I investigate files related to web application.
 
 I checked the application source:
 
@@ -232,7 +228,7 @@ These help me understand the target's filesystem and application structure.
 
 ---
 
-# 8. check Port 6048
+## 7. check Port 6048
 
  Nmap scan identified:
 
@@ -276,7 +272,7 @@ Because i had LFI, i use the vulnerability to investigate the Linux process info
 
 ---
 
-# 9. Using `/proc` to Identify the Service
+## 8. Using `/proc` to Identify the Service
 
 Linux exposes information about running processes through the `/proc` filesystem.
 
@@ -324,7 +320,7 @@ The process information showed that the process was associated with the service 
 
 ---
 
-# 10. Confirming Port 6048 Using `/proc/net/tcp`
+## 9. Confirming Port 6048 Using `/proc/net/tcp`
 
 I also see:
 
@@ -356,7 +352,7 @@ Converting:
 
 ---
 
-# 11. Identifying gdbserver
+## 10. Identifying gdbserver
 
 ![GDB](./images/gdb.jpg)
 
@@ -398,7 +394,7 @@ it is a key to obtain initial access.
 
 ---
 
-# 12. Understanding the gdbserver Attack
+## 11. Understanding the gdbserver Attack
 
 gdbserver is normally used for remote debugging.
 
@@ -412,25 +408,10 @@ Target:6048
 
 Because of this, it could be abused to execute a payload on the target.
 
-The attack path was:
-
-```text
-LFI
-  
-/proc enumeration
-  
-Identify port 6048
-  
-Identify gdbserver
-  
-Connect with GDB
-  
-Execute reverse-shell payload
-```
 
 ---
 
-# 13. Preparing the Payload
+## 12. Preparing the Payload
 
 We need to find our kali vpn ip because we want the target to send us a response.
 
@@ -471,7 +452,7 @@ I also inspected the payload to make sure it contained the expected network conf
 
 ---
 
-# 14. Starting the Listener
+## 13. Starting the Listener
 
 Before executing the payload, I started a Netcat listener on my Kali machine:
 
@@ -485,7 +466,7 @@ The listener are waiting for the target to connect back:
 
 ---
 
-# 15. Connecting to gdbserver
+## 14. Connecting to gdbserver
 
 I started GDB:
 
@@ -503,7 +484,7 @@ The target architecture was checked during the process.
 
 ---
 
-# 16. Executing the Payload
+## 15. Executing the Payload
 
 After creatin remote GDB connection, i configured the payload and executed it through the remote debugging session.
 
@@ -516,7 +497,7 @@ The gdbserver executed the payload, causing the target machine to initiate a con
 
 ---
 
-# 17. Obtaining the Reverse Shell
+## 16. Obtaining the Reverse Shell
 
 The listener received the incoming connection.
 
@@ -548,7 +529,7 @@ hudson
 
 ---
 
-# 18. Lateral Movement
+## 17. Lateral Movement
 
 Then the target downloads the binary.elf.
 
@@ -576,7 +557,7 @@ cat /home/carlos/user.txt
 **WE FOUND THE USER FLAG**
 
 
-# 19. Privilege Escalation
+## 18. Privilege Escalation
 
 Next we need to have a root privileged to find the root flag.
 
@@ -618,7 +599,7 @@ private key or the first one confirms that we are allowed to log in and public o
 
 ---
 
-# 20. Flags
+## 19. Flags
 
 ## User Flag
 
@@ -632,7 +613,7 @@ user.txt
 
 ## Root Flag
 
-Next we have to see a root privileged to find the root flag.
+Next let us see a root file to find the root flag.
 
 ```text
 root.txt
