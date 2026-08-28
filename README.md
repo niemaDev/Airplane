@@ -547,42 +547,44 @@ cat /home/carlos/user.txt
 
 ## 18. Privilege Escalation
 
-Next we need to have a root privileged to find the root flag.
+Next we need to have a root privileged to find the root flag
 
-First check the current privilege by running `"id"` we care only about `euid=1000(carlos)` because this is the effective identity.
+First we will check our current privilege by running "id" we care only about euid=1000(carlos) because this is the effective identity
 
-We guss the file might be in the find program so we do:
+We suspect that the file might be in the find program so we do
 
 ```bash
 ls -l /usr/bin/find
 ```
 
-We see that this was a SUID program.
+We confirmed that this was a SUID program
 
 ```bash
 ls -la /home/carlos/.gnupg
 ```
 
-This will help us see if carlos have something interesting to dig out in his GPG there was a private-key but its not usable so we generate an ssh key.
+This will help us see if carlos have something interesting in his GPG configuration there was a private-key but its not usable so we generate an ssh key
 
 ```bash
 ssh-keygen -t rsa
 ```
 
-The key file will be saved is:
+The file in which the key will be saved is
 
 ```text
 /tmp/carlos_key
 ```
 
-So now there are two files :
+So now two files were created
+/tmp/carlos_key
+/tmp/carlos_key.pub
+The private key or the first one proves that we are allowed to log in and the public or the second one is placed in the users authorized_keys file
 
 ```text
 /tmp/carlos_key
 /tmp/carlos_key.pub
 ```
 
-private key or the first one confirms that we are allowed to log in and public one is placed in the users authorized_keys file.
 
 
 ## 19. Flags
@@ -607,7 +609,7 @@ root.txt
 
 ![Carlos Flag](./images/flag_carlos.jpg)
 
----
+
 
 # Conclusion
 
