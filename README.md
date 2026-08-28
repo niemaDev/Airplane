@@ -8,7 +8,7 @@ The goal is to obtain both `user.txt` and `root.txt`.
 
 we gonna use this steps :
 
----
+
 
 ## 1. Active Recon
 
@@ -74,7 +74,7 @@ On this the important part is:
 
 this means the website is receiving a value from us.
 
----
+
 
 ## 3. investigate Port 6048
 
@@ -97,7 +97,7 @@ hudson
 
 here there are two users Carlos and Hudson but still we don't have a shell.
 
----
+
 
 ## 4. Test web app by using curl command
 
@@ -143,7 +143,7 @@ The server returned the contents of `/etc/passwd`.
 
 This confirmed that it is  a Local File Inclusion (LFI) vulnerability.
 
----
+
 
 ## 5. Exploring the Application
 
@@ -179,7 +179,7 @@ curl -s "http://airplane.thm:8000/?page=../../../../proc/self/cmdline" | tr '\0'
 
 This helped to create a web application running as a process on the target machine.
 
----
+
 
 ## 6. Inspect the application files
 
@@ -226,7 +226,7 @@ curl -s "http://airplane.thm:8000/?page=../../../../home/hudson/.ssh/id_rsa"
 
 These help me understand the target's filesystem and application structure.
 
----
+
 
 ## 7. check Port 6048
 
@@ -270,7 +270,6 @@ The service was still not immediately clear.
 
 Because i had LFI, i use the vulnerability to investigate the Linux process information.
 
----
 
 ## 8. Using `/proc` to Identify the Service
 
@@ -318,7 +317,7 @@ curl -s "http://airplane.thm:8000/?page=../../../../../proc/534/status" | grep -
 ![Proc Status](./images/proc_status.jpg)
 The process information showed that the process was associated with the service listening on port 6048.
 
----
+
 
 ## 9. Confirming Port 6048 Using `/proc/net/tcp`
 
@@ -350,7 +349,6 @@ Converting:
 0x17A0 = 6048
 ```
 
----
 
 ## 10. Identifying gdbserver
 
@@ -392,7 +390,6 @@ running on:
 
 it is a key to obtain initial access.
 
----
 
 ## 11. Understanding the gdbserver Attack
 
@@ -408,8 +405,6 @@ Target:6048
 
 Because of this, it could be abused to execute a payload on the target.
 
-
----
 
 ## 12. Preparing the Payload
 
@@ -450,7 +445,6 @@ file airplane_payload.elf
 
 I also inspected the payload to make sure it contained the expected network configuration.
 
----
 
 ## 13. Starting the Listener
 
@@ -464,7 +458,6 @@ The listener are waiting for the target to connect back:
 
 
 
----
 
 ## 14. Connecting to gdbserver
 
@@ -482,7 +475,6 @@ Then connected to the remote gdbserver:
 
 The target architecture was checked during the process.
 
----
 
 ## 15. Executing the Payload
 
@@ -495,7 +487,6 @@ airplane_payload.elf
 ```
 The gdbserver executed the payload, causing the target machine to initiate a connection back to my Netcat listener.
 
----
 
 ## 16. Obtaining the Reverse Shell
 
@@ -527,7 +518,6 @@ hudson
 ![Initial Shell](./images/1001.jpg)
 ![Stty](./images/stty.jpg)
 
----
 
 ## 17. Lateral Movement
 
@@ -553,8 +543,6 @@ cat /home/carlos/user.txt
 
 ![Curl SSH](./images/curl_ssh.jpg)
 
-
-**WE FOUND THE USER FLAG**
 
 
 ## 18. Privilege Escalation
@@ -597,13 +585,11 @@ So now there are two files :
 private key or the first one confirms that we are allowed to log in and public one is placed in the users authorized_keys file.
 
 
----
-
 ## 19. Flags
 
 ## User Flag
 
-**WE FOUND THE USER FLAG**
+**here we get user flag**
 
 ```text
 user.txt
